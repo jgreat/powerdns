@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/url"
 	"strings"
+	"path"
 
 	"github.com/dghubble/sling"
 )
@@ -76,6 +77,7 @@ type RRsets struct {
 type PowerDNS struct {
 	scheme   string
 	hostname string
+	basePath string
 	port     string
 	vhost    string
 	domain   string
@@ -105,9 +107,14 @@ func New(baseURL string, vhost string, domain string, apikey string) *PowerDNS {
 		}
 	}
 
+	if u.Path == "" {
+		u.Path = "/"
+	}
+
 	return &PowerDNS{
 		scheme:   u.Scheme,
 		hostname: hostname,
+		basePath: u.Path,
 		port:     port,
 		vhost:    vhost,
 		domain:   domain,
@@ -185,7 +192,10 @@ func (p *PowerDNS) getSling() *sling.Sling {
 	u := new(url.URL)
 	u.Host = p.hostname + ":" + p.port
 	u.Scheme = p.scheme
-	u.Path = "/servers/" + p.vhost + "/zones/"
+
+	childPath := "/servers/" + p.vhost + "/zones/"
+
+	u.Path = path.Join(p.basePath, childPath)
 
 	Sling := sling.New().Base(u.String())
 
@@ -205,7 +215,7 @@ func (p *PowerDNS) GetRecords() ([]Record, error) {
 	u := new(url.URL)
 	u.Host = p.hostname + ":" + p.port
 	u.Scheme = p.scheme
-	u.Path = "/servers/" + p.vhost + "/zones/"
+	u.Path = p.basePath + "/servers/" + p.vhost + "/zones/"
 
 	resp, err := p.getSling().Path(p.domain).Set("X-API-Key", p.apikey).Receive(zone, error)
 
